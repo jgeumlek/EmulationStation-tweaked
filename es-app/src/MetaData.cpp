@@ -1,12 +1,20 @@
 #include "MetaData.h"
 #include <boost/assign.hpp>
 
+
+#define MANDATORY_METADATA \
+{"name",MD_STRING,"",false,"name","enter display name"},\
+{"desc",MD_MULTILINE_STRING,"",false,"description","enter description"},\
+{"image",MD_IMAGE_PATH,"",false,"image","enter path to image"},\
+{"thumbnail",MD_IMAGE_PATH,"",false,"thumbnail","enter path to thumbnail"},
+
+//because of how the database is set up, every entry is assumed to have at least the above metadata
+//so they are stored in the filelist instead of the more specialized metadata tables.
+//(this allows populating the system lists without joining multiple tables)
+
 MetaDataDecl gameDecls[] = { 
 	// key,			type,					default,			statistic,	name in GuiMetaDataEd,	prompt in GuiMetaDataEd
-	{"name",		MD_STRING,				"", 				false,		"name",					"enter game name"}, 
-	{"desc",		MD_MULTILINE_STRING,	"", 				false,		"description",			"enter description"},
-	{"image",		MD_IMAGE_PATH,			"", 				false,		"image",				"enter path to image"},
-	{"thumbnail",	MD_IMAGE_PATH,			"", 				false,		"thumbnail",			"enter path to thumbnail"},
+	MANDATORY_METADATA
 	{"rating",		MD_RATING,				"0.000000", 		false,		"rating",				"enter rating"},
 	{"releasedate", MD_DATE,				"not-a-date-time", 	false,		"release date",			"enter release date"},
 	{"developer",	MD_STRING,				"unknown",			false,		"developer",			"enter game developer"},
@@ -17,23 +25,16 @@ MetaDataDecl gameDecls[] = {
 	{"lastplayed",	MD_TIME,				"not-a-date-time", 				true,		"last played",			"enter last played date"}
 };
 
-// because of how the GamelistDB is set up, this must be a subset of gameDecls
+
 MetaDataDecl folderDecls[] = { 
-	{"name",		MD_STRING,				"", 				false,		"name",					"enter game name"}, 
-	{"desc",		MD_MULTILINE_STRING,	"", 				false,		"description",			"enter description"},
-	{"image",		MD_IMAGE_PATH,			"", 				false,		"image",				"enter path to image"},
-	{"thumbnail",	MD_IMAGE_PATH,			"", 				false,		"thumbnail",			"enter path to thumbnail"},
+	MANDATORY_METADATA
 };
-// because of that subset constraint, note the abuse of the fields!
-// Some are marked as MD_MULTILINE_STRING instead of MD_STRING. This appears to be ok.
+
 MetaDataDecl filterDecls[] = { 
-	{"name",		MD_STRING,				"Filter", 				false,		"name",					"enter filter name"}, 
-	{"desc",		MD_MULTILINE_STRING,	"", 				false,		"description",			"enter description"},
-	{"image",		MD_IMAGE_PATH,			"", 				false,		"image",				"enter path to image"},
-	{"thumbnail",	MD_IMAGE_PATH,			"", 				false,		"thumbnail",			"enter path to thumbnail"},
-        {"genre",	MD_MULTILINE_STRING,			"rating > .6 AND playcount > 0", 				false,		"query",			"enter query"},
-	{"developer",	MD_STRING,				"",			false,		"order by",			"enter columns to order by"},
-	{"players",		MD_INT,					"0",				false,		"limit",				"enter limit on results"}
+	MANDATORY_METADATA
+        {"query",	MD_MULTILINE_STRING,			"rating > .6 AND playcount > 0", 				false,		"query",			"enter query"},
+	{"ordering",	MD_STRING,				"",			false,		"order by",			"enter columns to order by"},
+	{"maxcount",		MD_INT,					"0",				false,		"limit",				"enter limit on results"}
 };
 
 std::map< MetaDataListType, std::vector<MetaDataDecl> > MDD_map = boost::assign::map_list_of

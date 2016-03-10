@@ -115,7 +115,7 @@ FileType FileData::getType() const
 MetaDataMap FileData::get_metadata() const
 {
 	if(mValidMetaDataCache) return mMetaDataCache;
-	mMetaDataCache = SystemManager::getInstance()->database().getFileData(mFileID, mSystem->getName());
+	mMetaDataCache = SystemManager::getInstance()->database().getFileData(mFileID, mSystem->getName(), mType);
 	mValidMetaDataCache = true;
 	return mMetaDataCache;
 }
@@ -138,11 +138,11 @@ std::vector<FileData> FileData::getChildren(const FileSort* sort) const
 	if(mType == FILTER)
 	{
 		MetaDataMap metadata = get_metadata();
-		//Sorry about abusing columns for other purposes.
-		std::string filter_matches = mMetaDataCache.get("genre");
-		int limit = mMetaDataCache.get<int>("players");
+
+		std::string filter_matches = mMetaDataCache.get("query");
+		int limit = mMetaDataCache.get<int>("maxcount");
 		//TODO: Let a filter also specify ability to match filters/folders
-		std::string orderby = mMetaDataCache.get("developer");
+		std::string orderby = mMetaDataCache.get("ordering");
 		FileSort filterSort("Filter given sort",orderby.c_str());
 		if(!orderby.empty())
 			sort = &filterSort;

@@ -51,7 +51,7 @@ public:
 	void removeNonexisting(const SystemData* system);
 	
 	// returns all metadata for a given fileID
-	MetaDataMap getFileData(const std::string& fileID, const std::string& systemID) const;
+	MetaDataMap getFileData(const std::string& fileID, const std::string& systemID, FileType type) const;
 	// tags are a separate notion from meta data
 	std::vector<std::string> getFileTags(const std::string& fileID, const std::string& systemID) const;
 
@@ -83,10 +83,15 @@ public:
 
 private:
 	void openDB(const char* path);
-	void createMissingTables(); // will do nothing if a "files" table already exists
-	bool hasValidSchema() const; // returns true if the current "files" table's schema matches our metadata declarations
-	void recreateTables(); // recreates the "files" table with the current metadata schema, copying any values with the same column names
+	void createMetaDataTable(MetaDataListType md, const std::string table_name); // creates a table for a given file type's metadata
+	void createMissingTables(); // create tables only if they don't exist
+	bool hasValidSchema() const; // returns true if the tables match our metadata declarations
+	bool hasValidMetaDataSchema(MetaDataListType md, const std::string& table_name) const;
+	void recreateTable(const std::string table_name);
+	void recreateTables(); // recreates the tables with the current metadata schema, copying any values with the same column names
+	void importOldSchema(bool force); // imports info from the previous database schema, with everything in one table.
 	void closeDB();
+	void exportXMLType(const SystemData* system, pugi::xml_node& root, FileType type);
 
 	sqlite3* mDB;
 };

@@ -39,10 +39,10 @@ SystemData::SystemData(const std::string& name, const std::string& fullName, con
 	{
 		mRoot = FileData(".", this, FileType::FILTER);
 		md = MetaDataMap(FILTER_METADATA,true);
-		//TODO: Fix schema to avoid this column abuse.
-		md.set("genre","");
-		md.set("players",0);
-		md.set("developer","");
+
+		md.set("query","");
+		md.set("maxcount",0);
+		md.set("ordering","");
 	}
 	//User might have switched this system from a pure filter to a folder, so we need to update the DB.
 	mRoot.set_metadata(md);
