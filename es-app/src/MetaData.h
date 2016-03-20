@@ -35,6 +35,7 @@ struct MetaDataDecl
 
 enum MetaDataListType
 {
+	FILELIST_METADATA,
 	GAME_METADATA,
 	FOLDER_METADATA,
         FILTER_METADATA,

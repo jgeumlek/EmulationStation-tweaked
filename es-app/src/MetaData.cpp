@@ -12,6 +12,10 @@
 //so they are stored in the filelist instead of the more specialized metadata tables.
 //(this allows populating the system lists without joining multiple tables)
 
+MetaDataDecl filelistDecls[] = { 
+	MANDATORY_METADATA
+};
+
 MetaDataDecl gameDecls[] = { 
 	// key,			type,					default,			statistic,	name in GuiMetaDataEd,	prompt in GuiMetaDataEd
 	MANDATORY_METADATA
@@ -38,6 +42,8 @@ MetaDataDecl filterDecls[] = {
 };
 
 std::map< MetaDataListType, std::vector<MetaDataDecl> > MDD_map = boost::assign::map_list_of
+	(FILELIST_METADATA, 
+		std::vector<MetaDataDecl>(gameDecls, gameDecls + sizeof(gameDecls) / sizeof(gameDecls[0])))
 	(GAME_METADATA, 
 		std::vector<MetaDataDecl>(gameDecls, gameDecls + sizeof(gameDecls) / sizeof(gameDecls[0])))
 	(FOLDER_METADATA, 

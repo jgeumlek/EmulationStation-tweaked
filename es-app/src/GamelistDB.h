@@ -87,7 +87,8 @@ private:
 	void createMissingTables(); // create tables only if they don't exist
 	bool hasValidSchema() const; // returns true if the tables match our metadata declarations
 	bool hasValidMetaDataSchema(MetaDataListType md, const std::string& table_name) const;
-	void recreateTable(const std::string table_name);
+	void recreateMetaDataTable(const std::string table_name);
+	void recreateFileListTable(FileType type);
 	void recreateTables(); // recreates the tables with the current metadata schema, copying any values with the same column names
 	void importOldSchema(bool force); // imports info from the previous database schema, with everything in one table.
 	void closeDB();

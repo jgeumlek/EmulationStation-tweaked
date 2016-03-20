@@ -351,11 +351,11 @@ std::vector<std::string> get_columns(sqlite3* db, const std::string& table_name)
 
 // returns a vector of all columns common to all supplied tables
 // order is not preserved!
-std::vector<std::string> get_common_columns(sqlite3* db, const std::vector<std::string>& table_names)
+std::vector<std::string> get_common_columns(sqlite3* db, const std::string table_name, const std::vector<std::string>& old_tables)
 {
 	std::map<std::string, int> columns;
 
-	for(auto it = table_names.begin(); it != table_names.end(); it++)
+	for(auto it = old_tables.begin(); it != old_tables.end(); it++)
 	{
 		std::string query = "PRAGMA table_info(" + *it + ")";
 		SQLPreparedStmt stmt(db, query);
@@ -364,13 +364,17 @@ std::vector<std::string> get_common_columns(sqlite3* db, const std::vector<std::
 			columns[((const char*)sqlite3_column_text(stmt, 1))]++;
 		}
 	}
-
 	std::vector<std::string> common;
-	for(auto it = columns.begin(); it != columns.end(); it++)
+	std::string query = "PRAGMA table_info(" + table_name + ")";
+	SQLPreparedStmt stmt(db, query);
+	while(stmt.step() != SQLITE_DONE)
 	{
-		if(it->second == table_names.size())
-			common.push_back(it->first);
+		if(columns[((const char*)sqlite3_column_text(stmt, 1))] > 0)
+		{
+			common.push_back((const char*)sqlite3_column_text(stmt, 1));
+		}
 	}
+	
 
 	return common;
 }
@@ -431,8 +435,7 @@ void GamelistDB::importOldSchema(bool force)
 	LOG(LogInfo) << "Imported!";
 }
 
-//TODO: The two functions below need reworking to handle a column moving across tables.
-void GamelistDB::recreateTable(const std::string table_name)
+void GamelistDB::recreateMetaDataTable(const std::string table_name)
 {
 	std::string table_temp_name = table_name + "_old";
 	std::string rename = "ALTER TABLE " + table_name + " RENAME TO " + table_temp_name;
@@ -441,14 +444,14 @@ void GamelistDB::recreateTable(const std::string table_name)
 
 	createMissingTables();
 
-	std::vector<std::string> common_cols = get_common_columns(mDB, { table_name, table_temp_name });
+	std::vector<std::string> common_cols = get_common_columns(mDB, table_name, { table_temp_name, "filelist_old" });
 	std::stringstream ss;
 	for(unsigned int i = 0; i < common_cols.size(); i++)
 	{
 		ss << common_cols.at(i) << (i + 1 < common_cols.size() ? ", " : "");
 	}
 
-	std::string copy = "INSERT INTO " +table_name + " (" + ss.str() + ") SELECT " + ss.str() + " FROM " + table_temp_name;
+	std::string copy = "INSERT INTO " +table_name + " (" + ss.str() + ") SELECT " + ss.str() + " FROM filelist_old NATURAL JOIN " + table_temp_name;
 	if(sqlite3_exec(mDB, copy.c_str(), NULL, NULL, NULL))
 		throw DBException() << "Error copying into new table!";
 
@@ -456,22 +459,46 @@ void GamelistDB::recreateTable(const std::string table_name)
 	if(sqlite3_exec(mDB, drop.c_str(), NULL, NULL, NULL))
 		throw DBException() << "Error dropping old table!";
 }
+void GamelistDB::recreateFileListTable(FileType type)
+{
+	createMissingTables();
+
+	std::vector<std::string> common_cols = get_common_columns(mDB, "filelist", { fileTypeToMetaDataTable(type), "filelist_old" });
+	std::stringstream ss;
+	for(unsigned int i = 0; i < common_cols.size(); i++)
+	{
+		ss << common_cols.at(i) << (i + 1 < common_cols.size() ? ", " : "");
+	}
+
+	std::string copy = "INSERT INTO filelist (" + ss.str() + ") SELECT " + ss.str() + " FROM filelist_old LEFT NATURAL JOIN " + fileTypeToMetaDataTable(type) + " WHERE filetype = " + std::to_string(type);
+	if(sqlite3_exec(mDB, copy.c_str(), NULL, NULL, NULL))
+		throw DBException() << "Error building filelist of type " << type << " !";
+
+}
 
 void GamelistDB::recreateTables()
 {
 	createMissingTables();
-	LOG(LogInfo) << "Re-creating filelist table...";
-	recreateTable("filelist");
-	LOG(LogInfo) << "Recreated filelist table successfully!";
+	LOG(LogInfo) << "Re-creating tables...";
+	std::string rename = "ALTER TABLE filelist RENAME TO filelist_old";
+	if(sqlite3_exec(mDB, rename.c_str(), NULL, NULL, NULL))
+		throw DBException() << "Existing table could not be renamed!";
+	recreateFileListTable(GAME);
+	recreateFileListTable(FOLDER);
+	recreateFileListTable(FILTER);
 	LOG(LogInfo) << "Re-creating md_game table...";
-	recreateTable("md_game");
+	recreateMetaDataTable("md_game");
 	LOG(LogInfo) << "Recreated md_game table successfully!";
 	LOG(LogInfo) << "Re-creating md_folder table...";
-	recreateTable("md_folder");
+	recreateMetaDataTable("md_folder");
 	LOG(LogInfo) << "Recreated md_folder table successfully!";
 	LOG(LogInfo) << "Re-creating md_filter table...";
-	recreateTable("md_filter");
+	recreateMetaDataTable("md_filter");
 	LOG(LogInfo) << "Recreated md_filter table successfully!";
+	
+	std::string drop = "DROP TABLE filelist_old";
+	if(sqlite3_exec(mDB, drop.c_str(), NULL, NULL, NULL))
+		throw DBException() << "Error dropping old table!";
 }
 
 // used by populate_recursive to insert a single file into the database
