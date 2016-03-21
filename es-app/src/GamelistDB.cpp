@@ -9,18 +9,15 @@
 
 namespace fs = boost::filesystem;
 
-#define FILELIST_COLUMNS 8
+//We have four metadata columns (name,desc,image,thumbnail) reserved for the filelist table
+#define RESERVED_COLUMNS 4
+
+#define FILELIST_COLUMNS (4 + RESERVED_COLUMNS)
 #define COL_FILEID 0
 #define COL_SYSTEMID 1
 #define COL_FILETYPE 2
 #define COL_FILEEXISTS 3
-#define COL_NAME 4
-#define COL_DESC 5
-#define COL_IMAGE 6
-#define COL_THUMB 7
 
-//We have four metadata columns (name,desc,image,thumbnail) reserved for the filelist table
-#define RESERVED_COLUMNS 4
 
 std::string pathToFileID(const fs::path& path, const fs::path& systemStartPath)
 {
@@ -262,15 +259,8 @@ void GamelistDB::closeDB()
 	}
 }
 
-void GamelistDB::createMetaDataTable(MetaDataListType md, const std::string table_name)
-{
-	const std::vector<MetaDataDecl>& decl = getMDDMap().at(md);
 
-
-	std::stringstream ss;
-	ss << "CREATE TABLE IF NOT EXISTS "<< table_name << " (" <<
-		"fileid VARCHAR(255) NOT NULL, " <<
-		"systemid VARCHAR(255) NOT NULL, ";
+void add_columns_decl(const std::vector<MetaDataDecl>& decl, std::ostream& ss) {
 	for(auto it = decl.begin() + RESERVED_COLUMNS; it != decl.end(); it++)
 	{
 		// format here is "[key] [type] DEFAULT [default_value],"
@@ -310,6 +300,18 @@ void GamelistDB::createMetaDataTable(MetaDataListType md, const std::string tabl
 
 		ss << ", ";
 	}
+}
+
+void GamelistDB::createMetaDataTable(MetaDataListType md, const std::string table_name)
+{
+	const std::vector<MetaDataDecl>& decl = getMDDMap().at(md);
+
+
+	std::stringstream ss;
+	ss << "CREATE TABLE IF NOT EXISTS "<< table_name << " (" <<
+		"fileid VARCHAR(255) NOT NULL, " <<
+		"systemid VARCHAR(255) NOT NULL, ";
+	add_columns_decl(decl, ss);
 
 	ss << "PRIMARY KEY (fileid, systemid), FOREIGN KEY(fileid, systemid) REFERENCES filelist(fileid,systemid))";
 
@@ -319,7 +321,11 @@ void GamelistDB::createMetaDataTable(MetaDataListType md, const std::string tabl
 
 void GamelistDB::createMissingTables()
 {
-	if(sqlite3_exec(mDB, "CREATE TABLE IF NOT EXISTS filelist (fileid VARCHAR(255) NOT NULL, systemid VARCHAR(255) NOT NULL, filetype INT NOT NULL, fileexists BOOLEAN, name VARCHAR(255) NOT NULL, desc VARCHAR(255), image VARCHAR(255), thumbnail VARCHAR(255), PRIMARY KEY (fileid, systemid))", NULL, NULL, NULL))
+	std::stringstream ss;
+	ss << "CREATE TABLE IF NOT EXISTS filelist (fileid VARCHAR(255) NOT NULL, systemid VARCHAR(255) NOT NULL, filetype INT NOT NULL, fileexists BOOLEAN, ";
+	add_columns_decl(getMDDMap.at(FILELIST_METADATA), ss);
+	ss << " PRIMARY KEY (fileid, systemid))";
+	if(sqlite3_exec(mDB, ss.str().c_str(), NULL, NULL, NULL))
 		throw DBException() << "Error creating table!\n\t" << sqlite3_errmsg(mDB);
 	createMetaDataTable(GAME_METADATA,"md_game");
 	createMetaDataTable(FOLDER_METADATA,"md_folder");
@@ -417,6 +423,7 @@ bool GamelistDB::hasValidSchema() const
 
 void GamelistDB::importOldSchema(bool force)
 {
+	//TODO: Make this work when MetaData.cpp is changed.
 	LOG(LogInfo) << "Import old data?";
 	if(!(force || get_columns(mDB, "filelist").empty()))
 		return;
